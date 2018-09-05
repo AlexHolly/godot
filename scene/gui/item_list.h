@@ -52,6 +52,8 @@ public:
 private:
 	struct Item {
 
+		Array highlight_columns;
+
 		Ref<Texture> icon;
 		Rect2i icon_region;
 		Color icon_modulate;
@@ -65,6 +67,7 @@ private:
 		String tooltip;
 		Color custom_fg;
 		Color custom_bg;
+		Color custom_hl;
 
 		Rect2 rect_cache;
 		Rect2 min_rect_cache;
@@ -127,6 +130,9 @@ public:
 	void add_item(const String &p_item, const Ref<Texture> &p_texture = Ref<Texture>(), bool p_selectable = true);
 	void add_icon_item(const Ref<Texture> &p_item, bool p_selectable = true);
 
+	void set_item_highlights(int p_idx, const Array &columns);
+	Array get_item_highlights(int p_idx) const;
+
 	void set_item_text(int p_idx, const String &p_text);
 	String get_item_text(int p_idx) const;
 
@@ -162,6 +168,9 @@ public:
 
 	void set_item_custom_fg_color(int p_idx, const Color &p_custom_fg_color);
 	Color get_item_custom_fg_color(int p_idx) const;
+
+	void set_item_custom_hl_color(int p_idx, const Color &p_custom_hl_color);
+	Color get_item_custom_hl_color(int p_idx) const;
 
 	void select(int p_idx, bool p_single = true);
 	void unselect(int p_idx);

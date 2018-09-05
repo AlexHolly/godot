@@ -44,6 +44,7 @@ void ItemList::add_item(const String &p_item, const Ref<Texture> &p_texture, boo
 	item.disabled = false;
 	item.tooltip_enabled = true;
 	item.custom_bg = Color(0, 0, 0, 0);
+	item.custom_hl = Color(1, 0, 0, 0);
 	items.push_back(item);
 
 	update();
@@ -62,10 +63,28 @@ void ItemList::add_icon_item(const Ref<Texture> &p_item, bool p_selectable) {
 	item.disabled = false;
 	item.tooltip_enabled = true;
 	item.custom_bg = Color(0, 0, 0, 0);
+
 	items.push_back(item);
 
 	update();
 	shape_changed = true;
+}
+
+void ItemList::set_item_highlights(int p_idx, const Array &columns) {
+
+	ERR_FAIL_INDEX(p_idx, items.size());
+
+	items.write[p_idx].highlight_columns = columns;
+
+	update();
+	//shape_changed = true;
+}
+
+Array ItemList::get_item_highlights(int p_idx) const {
+
+	ERR_FAIL_INDEX_V(p_idx, items.size(), Array());
+
+	return items[p_idx].highlight_columns;
 }
 
 void ItemList::set_item_text(int p_idx, const String &p_text) {
@@ -181,6 +200,20 @@ Color ItemList::get_item_custom_fg_color(int p_idx) const {
 	ERR_FAIL_INDEX_V(p_idx, items.size(), Color());
 
 	return items[p_idx].custom_fg;
+}
+
+void ItemList::set_item_custom_hl_color(int p_idx, const Color &p_custom_hl_color) {
+
+	ERR_FAIL_INDEX(p_idx, items.size());
+
+	items.write[p_idx].custom_hl = p_custom_hl_color;
+}
+
+Color ItemList::get_item_custom_hl_color(int p_idx) const {
+
+	ERR_FAIL_INDEX_V(p_idx, items.size(), Color());
+
+	return items[p_idx].custom_hl;
 }
 
 void ItemList::set_item_tag_icon(int p_idx, const Ref<Texture> &p_tag_icon) {
@@ -989,8 +1022,8 @@ void ItemList::_notification(int p_what) {
 		}
 
 		for (int i = first_item_visible; i < items.size(); i++) {
-
-			Rect2 rcache = items[i].rect_cache;
+			Item it = items[i];
+			Rect2 rcache = it.rect_cache;
 
 			if (rcache.position.y > clip.position.y + clip.size.y)
 				break; // done
@@ -1002,7 +1035,7 @@ void ItemList::_notification(int p_what) {
 				rcache.size.width = width - rcache.position.x;
 			}
 
-			if (items[i].selected) {
+			if (it.selected) {
 				Rect2 r = rcache;
 				r.position += base_ofs;
 				r.position.y -= vseparation / 2;
@@ -1012,7 +1045,7 @@ void ItemList::_notification(int p_what) {
 
 				draw_style_box(sbsel, r);
 			}
-			if (items[i].custom_bg.a > 0.001) {
+			if (it.custom_bg.a > 0.001) {
 				Rect2 r = rcache;
 				r.position += base_ofs;
 
@@ -1022,11 +1055,11 @@ void ItemList::_notification(int p_what) {
 				r.position.x -= hseparation / 2;
 				r.size.x += hseparation;
 
-				draw_rect(r, items[i].custom_bg);
+				draw_rect(r, it.custom_bg);
 			}
 
 			Vector2 text_ofs;
-			if (items[i].icon.is_valid()) {
+			if (it.icon.is_valid()) {
 
 				Size2 icon_size;
 				//= _adjust_to_max_size(items[i].get_icon_size(),fixed_icon_size) * icon_scale;
@@ -1034,74 +1067,74 @@ void ItemList::_notification(int p_what) {
 				if (fixed_icon_size.x > 0 && fixed_icon_size.y > 0) {
 					icon_size = fixed_icon_size * icon_scale;
 				} else {
-					icon_size = items[i].get_icon_size() * icon_scale;
+					icon_size = it.get_icon_size() * icon_scale;
 				}
 
 				Vector2 icon_ofs;
 
-				Point2 pos = items[i].rect_cache.position + icon_ofs + base_ofs;
+				Point2 pos = it.rect_cache.position + icon_ofs + base_ofs;
 
 				if (icon_mode == ICON_MODE_TOP) {
 
-					pos.x += Math::floor((items[i].rect_cache.size.width - icon_size.width) / 2);
+					pos.x += Math::floor((it.rect_cache.size.width - icon_size.width) / 2);
 					pos.y += MIN(
-							Math::floor((items[i].rect_cache.size.height - icon_size.height) / 2),
-							items[i].rect_cache.size.height - items[i].min_rect_cache.size.height);
+							Math::floor((it.rect_cache.size.height - icon_size.height) / 2),
+							it.rect_cache.size.height - it.min_rect_cache.size.height);
 					text_ofs.y = icon_size.height + icon_margin;
-					text_ofs.y += items[i].rect_cache.size.height - items[i].min_rect_cache.size.height;
+					text_ofs.y += it.rect_cache.size.height - it.min_rect_cache.size.height;
 				} else {
 
-					pos.y += Math::floor((items[i].rect_cache.size.height - icon_size.height) / 2);
+					pos.y += Math::floor((it.rect_cache.size.height - icon_size.height) / 2);
 					text_ofs.x = icon_size.width + icon_margin;
 				}
 
 				Rect2 draw_rect = Rect2(pos, icon_size);
 
 				if (fixed_icon_size.x > 0 && fixed_icon_size.y > 0) {
-					Rect2 adj = _adjust_to_max_size(items[i].get_icon_size() * icon_scale, icon_size);
+					Rect2 adj = _adjust_to_max_size(it.get_icon_size() * icon_scale, icon_size);
 					draw_rect.position += adj.position;
 					draw_rect.size = adj.size;
 				}
 
-				Color modulate = items[i].icon_modulate;
-				if (items[i].disabled)
+				Color modulate = it.icon_modulate;
+				if (it.disabled)
 					modulate.a *= 0.5;
 
-				if (items[i].icon_region.has_no_area())
-					draw_texture_rect(items[i].icon, draw_rect, false, modulate);
+				if (it.icon_region.has_no_area())
+					draw_texture_rect(it.icon, draw_rect, false, modulate);
 				else
-					draw_texture_rect_region(items[i].icon, draw_rect, items[i].icon_region, modulate);
+					draw_texture_rect_region(it.icon, draw_rect, it.icon_region, modulate);
 			}
 
-			if (items[i].tag_icon.is_valid()) {
+			if (it.tag_icon.is_valid()) {
 
-				draw_texture(items[i].tag_icon, items[i].rect_cache.position + base_ofs);
+				draw_texture(it.tag_icon, it.rect_cache.position + base_ofs);
 			}
 
-			if (items[i].text != "") {
+			if (it.text != "") {
 
 				int max_len = -1;
 
-				Vector2 size = font->get_string_size(items[i].text);
+				Vector2 size = font->get_string_size(it.text);
 				if (fixed_column_width)
 					max_len = fixed_column_width;
 				else if (same_column_width)
-					max_len = items[i].rect_cache.size.x;
+					max_len = it.rect_cache.size.x;
 				else
 					max_len = size.x;
 
-				Color modulate = items[i].selected ? font_color_selected : (items[i].custom_fg != Color() ? items[i].custom_fg : font_color);
-				if (items[i].disabled)
+				Color modulate = it.selected ? font_color_selected : (it.custom_fg != Color() ? it.custom_fg : font_color);
+				if (it.disabled)
 					modulate.a *= 0.5;
 
 				if (icon_mode == ICON_MODE_TOP && max_text_lines > 0) {
 
-					int ss = items[i].text.length();
+					int ss = it.text.length();
 					float ofs = 0;
 					int line = 0;
 					for (int j = 0; j <= ss; j++) {
 
-						int cs = j < ss ? font->get_char_size(items[i].text[j], items[i].text[j + 1]).x : 0;
+						int cs = j < ss ? font->get_char_size(it.text[j], it.text[j + 1]).x : 0;
 						if (ofs + cs > max_len || j == ss) {
 							line_limit_cache.write[line] = j;
 							line_size_cache.write[line] = ofs;
@@ -1120,7 +1153,7 @@ void ItemList::_notification(int p_what) {
 					text_ofs.y += font->get_ascent();
 					text_ofs = text_ofs.floor();
 					text_ofs += base_ofs;
-					text_ofs += items[i].rect_cache.position;
+					text_ofs += it.rect_cache.position;
 
 					FontDrawer drawer(font, Color(1, 1, 1));
 					for (int j = 0; j < ss; j++) {
@@ -1131,7 +1164,7 @@ void ItemList::_notification(int p_what) {
 							if (line >= max_text_lines)
 								break;
 						}
-						ofs += drawer.draw_char(get_canvas_item(), text_ofs + Vector2(ofs + (max_len - line_size_cache[line]) / 2, line * (font_height + line_separation)).floor(), items[i].text[j], items[i].text[j + 1], modulate);
+						ofs += drawer.draw_char(get_canvas_item(), text_ofs + Vector2(ofs + (max_len - line_size_cache[line]) / 2, line * (font_height + line_separation)).floor(), it.text[j], it.text[j + 1], modulate);
 					}
 
 					//special multiline mode
@@ -1141,17 +1174,28 @@ void ItemList::_notification(int p_what) {
 						size.x = MIN(size.x, fixed_column_width);
 
 					if (icon_mode == ICON_MODE_TOP) {
-						text_ofs.x += (items[i].rect_cache.size.width - size.x) / 2;
+						text_ofs.x += (it.rect_cache.size.width - size.x) / 2;
 					} else {
-						text_ofs.y += (items[i].rect_cache.size.height - size.y) / 2;
+						text_ofs.y += (it.rect_cache.size.height - size.y) / 2;
 					}
 
 					text_ofs.y += font->get_ascent();
 					text_ofs = text_ofs.floor();
 					text_ofs += base_ofs;
-					text_ofs += items[i].rect_cache.position;
+					text_ofs += it.rect_cache.position;
 
-					draw_string(font, text_ofs, items[i].text, modulate, max_len + 1);
+					if (it.highlight_columns.size() > 0) {
+						for (int j = 0; j < it.text.length(); j++) {
+							if (it.highlight_columns.has(j)) {
+								draw_string(font, text_ofs, it.text.substr(j, 1), it.custom_hl, max_len + 1);
+							} else {
+								draw_string(font, text_ofs, it.text.substr(j, 1), modulate, max_len + 1);
+							}
+							text_ofs.x += get_font("font")->get_string_size(it.text.substr(j, 1)).x;
+						}
+					} else {
+						draw_string(font, text_ofs, it.text, modulate, max_len + 1);
+					}
 				}
 			}
 
@@ -1399,6 +1443,9 @@ void ItemList::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("add_item", "text", "icon", "selectable"), &ItemList::add_item, DEFVAL(Variant()), DEFVAL(true));
 	ClassDB::bind_method(D_METHOD("add_icon_item", "icon", "selectable"), &ItemList::add_icon_item, DEFVAL(true));
 
+	ClassDB::bind_method(D_METHOD("set_item_highlights", "idx", "columns"), &ItemList::set_item_highlights);
+	ClassDB::bind_method(D_METHOD("get_item_highlights", "idx"), &ItemList::get_item_highlights);
+
 	ClassDB::bind_method(D_METHOD("set_item_text", "idx", "text"), &ItemList::set_item_text);
 	ClassDB::bind_method(D_METHOD("get_item_text", "idx"), &ItemList::get_item_text);
 
@@ -1425,6 +1472,9 @@ void ItemList::_bind_methods() {
 
 	ClassDB::bind_method(D_METHOD("set_item_custom_fg_color", "idx", "custom_fg_color"), &ItemList::set_item_custom_fg_color);
 	ClassDB::bind_method(D_METHOD("get_item_custom_fg_color", "idx"), &ItemList::get_item_custom_fg_color);
+
+	ClassDB::bind_method(D_METHOD("set_item_custom_hl_color", "idx", "custom_hl_color"), &ItemList::set_item_custom_hl_color);
+	ClassDB::bind_method(D_METHOD("get_item_custom_hl_color", "idx"), &ItemList::get_item_custom_hl_color);
 
 	ClassDB::bind_method(D_METHOD("set_item_tooltip_enabled", "idx", "enable"), &ItemList::set_item_tooltip_enabled);
 	ClassDB::bind_method(D_METHOD("is_item_tooltip_enabled", "idx"), &ItemList::is_item_tooltip_enabled);
